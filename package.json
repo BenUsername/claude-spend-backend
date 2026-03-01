@@ -1,0 +1,12 @@
+{
+    "name": "claude-spend-backend",
+    "version": "1.0.0",
+    "main": "api/store.js",
+    "scripts": {
+        "start": "node api/store.js"
+    },
+    "dependencies": {
+        "mongodb": "^6.5.0",
+        "cors": "^2.8.5"
+    }
+}
