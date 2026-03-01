@@ -3,17 +3,30 @@
 const { MongoClient } = require('mongodb');
 
 // Ensure you set MONGODB_URI in your Vercel Environment Variables
-const uri = process.env.MONGODB_URI || "mongodb://localhost:27017/claude_spend";
-const client = new MongoClient(uri);
-let clientPromise;
+const uri = process.env.MONGODB_URI;
 
-if (process.env.NODE_ENV === 'development') {
-    if (!global._mongoClientPromise) {
-        global._mongoClientPromise = client.connect();
+if (!uri) {
+    throw new Error('MONGODB_URI environment variable is not set');
+}
+
+// Cache the client promise across warm invocations
+let cachedClient = null;
+let cachedDb = null;
+
+async function connectToDatabase() {
+    if (cachedClient && cachedDb) {
+        return { client: cachedClient, db: cachedDb };
     }
-    clientPromise = global._mongoClientPromise;
-} else {
-    clientPromise = client.connect();
+
+    const client = new MongoClient(uri);
+    await client.connect();
+
+    const db = client.db('claude_spend_benchmarking');
+
+    cachedClient = client;
+    cachedDb = db;
+
+    return { client, db };
 }
 
 module.exports = async function handler(req, res) {
@@ -46,8 +59,7 @@ module.exports = async function handler(req, res) {
 
         const { user_id, timestamp, prompt, model, tokens, cost, date } = data;
 
-        const dbClient = await clientPromise;
-        const db = dbClient.db('claude_spend_benchmarking');
+        const { db } = await connectToDatabase();
         const collection = db.collection('usage_data');
 
         // Store the data into MongoDB
